@@ -83,6 +83,75 @@ jobs:
           fi
           echo "SUCCESS: ./debug.keystore is present."
 
+          python3 -c "
+          import os, base64
+
+          if not os.path.exists('settings.gradle.kts') and not os.path.exists('settings.gradle'):
+              print('Restoring missing settings.gradle.kts...')
+              with open('settings.gradle.kts', 'w') as f:
+                  f.write('''pluginManagement {
+            repositories {
+              google {
+                content {
+                  includeGroupByRegex(\"com\\\\.android.*\")
+                  includeGroupByRegex(\"com\\\\.google.*\")
+                  includeGroupByRegex(\"androidx.*\")
+                }
+              }
+              mavenCentral()
+              gradlePluginPortal()
+            }
+          }
+
+          plugins { id(\"org.gradle.toolchains.foojay-resolver-convention\") version \"1.0.0\" }
+
+          dependencyResolutionManagement {
+            repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+            repositories {
+              google()
+              mavenCentral()
+            }
+          }
+
+          rootProject.name = \"Ak\"
+
+          include(\":app\")
+          ''')
+
+          if not os.path.exists('build.gradle.kts') and not os.path.exists('build.gradle'):
+              print('Restoring missing build.gradle.kts...')
+              with open('build.gradle.kts', 'w') as f:
+                  f.write('''plugins {
+            alias(libs.plugins.android.application) apply false
+            alias(libs.plugins.kotlin.compose) apply false
+            alias(libs.plugins.google.devtools.ksp) apply false
+            alias(libs.plugins.secrets) apply false
+            alias(libs.plugins.google.services) apply false
+          }
+          ''')
+
+          if not os.path.exists('gradle.properties'):
+              print('Restoring missing gradle.properties...')
+              with open('gradle.properties', 'w') as f:
+                  f.write('''org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8
+          org.gradle.parallel=true
+          kotlin.code.style=official
+          android.nonTransitiveRClass=true
+          org.gradle.caching=true
+          org.gradle.configuration-cache=true
+          org.gradle.workers.max=4
+          kotlin.compiler.execution.strategy=in-process
+          googleServices.missing.passthrough=true
+          ''')
+
+          os.makedirs('gradle', exist_ok=True)
+          if not os.path.exists('gradle/libs.versions.toml'):
+              print('Restoring missing gradle/libs.versions.toml...')
+              b64_toml = 'W3ZlcnNpb25zXQphZ3AgPSAiOS4xLjEiCmNvcmVLdHggPSAiMS4xOC4wIgpqdW5pdCA9ICI0LjEzLjIiCmp1bml0VmVyc2lvbiA9ICIxLjMuMCIKZXNwcmVzc29Db3JlID0gIjMuNy4wIgpsaWZlY3ljbGVSdW50aW1lS3R4ID0gIjIuOC43IgpsaWZlY3ljbGVWaWV3bW9kZWxDb21wb3NlID0gIjIuOC43IgpsaWZlY3ljbGVSdW50aW1lQ29tcG9zZSA9ICIyLjguNyIKYWN0aXZpdHlDb21wb3NlID0gIjEuMTAuMSIKa290bGluID0gIjIuMi4xMCIKY29tcG9zZUJvbSA9ICIyMDI0LjA5LjAwIgpnb29nbGVEZXZ0b29sc0tzcCA9ICIyLjMuNSIKbmF2aWdhdGlvbkNvbXBvc2UgPSAiMi44LjkiCnJvb21SdW50aW1lID0gIjIuNy4wIgpyb29tS3R4ID0gIjIuNy4wIgpyb29tQ29tcGlsZXIgPSAiMi43LjAiCmtvdGxpbnhDb3JvdXRpbmVzVGVzdCA9ICIxLjEwLjIiCmNvcmUgPSAiMS42LjEiCnJ1bm5lciA9ICIxLjYuMiIKY29pbENvbXBvc2UgPSAiMi43LjAiCnJldHJvZml0ID0gIjIuMTIuMCIKY29udmVydGVyTW9zaGkgPSAiMi4xMi4wIgprb3RsaW54Q29yb3V0aW5lc0FuZHJvaWQgPSAiMS4xMC4yIgprb3RsaW54Q29yb3V0aW5lc0NvcmUgPSAiMS4xMC4yIgphY2NvbXBhbmlzdFBlcm1pc3Npb25zID0gIjAuMzcuMyIKcGxheVNlcnZpY2VzTG9jYXRpb24gPSAiMjEuMy4wIgpjYW1lcmFDYW1lcmEyID0gIjEuNS4wIgpjYW1lcmFMaWZlY3ljbGUgPSAiMS41LjAiCmNhbWVyYVZpZXcgPSAiMS41LjAiCmNhbWVyYUNvcmUgPSAiMS41LjAiCmxvZ2dpbmdJbnRlcmNlcHRvciA9ICI0LjEwLjAiCm9raHR0cCA9ICI0LjEwLjAiCm1vc2hpS290bGluID0gIjEuMTUuMiIKbW9zaGlLb3RsaW5Db2RlZ2VuID0gIjEuMTUuMiIKZGF0YXN0b3JlUHJlZmVyZW5jZXMgPSAiMS4xLjciCnJvYm9sZWN0cmljID0gIjQuMTYuMSIKZmlyZWJhc2VCb20gPSAiMzQuMTcuMCIKc2VjcmV0c0dyYWRsZVBsdWdpbiA9ICIyLjAuMSIKZ29vZ2xlU2VydmljZXMgPSAiNC41LjAiCmNyZWRlbnRpYWxzID0gIjEuNS4wIgpnb29nbGVpZCA9ICIxLjEuMSIKCgpbbGlicmFyaWVzXQphbmRyb2lkeC1jb3JlLWt0eCA9IHsgZ3JvdXAgPSAiYW5kcm9pZHguY29yZSIsIG5hbWUgPSAiY29yZS1rdHgiLCB2ZXJzaW9uLnJlZiA9ICJjb3JlS3R4IiB9Cmp1bml0ID0geyBncm91cCA9ICJqdW5pdCIsIG5hbWUgPSAianVuaXQiLCB2ZXJzaW9uLnJlZiA9ICJqdW5pdCIgfQphbmRyb2lkeC1qdW5pdCA9IHsgZ3JvdXAgPSAiYW5kcm9pZHgudGVzdC5leHQiLCBuYW1lID0gImp1bml0IiwgdmVyc2lvbi5yZWYgPSAianVuaXRWZXJzaW9uIiB9CmFuZHJvaWR4LWVzcHJlc3NvLWNvcmUgPSB7IGdyb3VwID0gImFuZHJvaWR4LnRlc3QuZXNwcmVzc28iLCBuYW1lID0gImVzcHJlc3NvLWNvcmUiLCB2ZXJzaW9uLnJlZiA9ICJlc3ByZXNzb0NvcmUiIH0KYW5kcm9pZHgtbGlmZWN5Y2xlLXJ1bnRpbWUta3R4ID0geyBncm91cCA9ICJhbmRyb2lkeC5saWZlY3ljbGUiLCBuYW1lID0gImxpZmVjeWNsZS1ydW50aW1lLWt0eCIsIHZlcnNpb24ucmVmID0gImxpZmVjeWNsZVJ1bnRpbWVLdHgiIH0KYW5kcm9pZHgtbGlmZWN5Y2xlLXZpZXdtb2RlbC1jb21wb3NlID0geyBncm91cCA9ICJhbmRyb2lkeC5saWZlY3ljbGUiLCBuYW1lID0gImxpZmVjeWNsZS12aWV3bW9kZWwtY29tcG9zZSIsIHZlcnNpb24ucmVmID0gImxpZmVjeWNsZVZpZXdtb2RlbENvbXBvc2UiIH0KYW5kcm9pZHgtbGlmZWN5Y2xlLXJ1bnRpbWUtY29tcG9zZSA9IHsgZ3JvdXAgPSAiYW5kcm9pZHgubGlmZWN5Y2xlIiwgbmFtZSA9ICJsaWZlY3ljbGUtcnVudGltZS1jb21wb3NlIiwgdmVyc2lvbi5yZWYgPSAibGlmZWN5Y2xlUnVudGltZUNvbXBvc2UiIH0KYW5kcm9pZHgtYWN0aXZpdHktY29tcG9zZSA9IHsgZ3JvdXAgPSAiYW5kcm9pZHguYWN0aXZpdHkiLCBuYW1lID0gImFjdGl2aXR5LWNvbXBvc2UiLCB2ZXJzaW9uLnJlZiA9ICJhY3Rpdml0eUNvbXBvc2UiIH0KYW5kcm9pZHgtY29tcG9zZS1ib20gPSB7IGdyb3VwID0gImFuZHJvaWR4LmNvbXBvc2UiLCBuYW1lID0gImNvbXBvc2UtYm9tIiwgdmVyc2lvbi5yZWYgPSAiY29tcG9zZUJvbSIgfQphbmRyb2lkeC1jb21wb3NlLXVpID0geyBncm91cCA9ICJhbmRyb2lkeC5jb21wb3NlLnVpIiwgbmFtZSA9ICJ1aSIgfQphbmRyb2lkeC1jb21wb3NlLXVpLWdyYXBoaWNzID0geyBncm91cCA9ICJhbmRyb2lkeC5jb21wb3NlLnVpIiwgbmFtZSA9ICJ1aS1ncmFwaGljcyIgfQphbmRyb2lkeC1jb21wb3NlLXVpLXRvb2xpbmcgPSB7IGdyb3VwID0gImFuZHJvaWR4LmNvbXBvc2UudWkiLCBuYW1lID0gInVpLXRvb2xpbmciIH0KYW5kcm9pZHgtY29tcG9zZS11aS10b29saW5nLXByZXZpZXcgPSB7IGdyb3VwID0gImFuZHJvaWR4LmNvbXBvc2UudWkiLCBuYW1lID0gInVpLXRvb2xpbmctcHJldmlldyIgfQphbmRyb2lkeC1jb21wb3NlLXVpLXRlc3QtbWFuaWZlc3QgPSB7IGdyb3VwID0gImFuZHJvaWR4LmNvbXBvc2UudWkiLCBuYW1lID0gInVpLXRlc3QtbWFuaWZlc3QiIH0KYW5kcm9pZHgtY29tcG9zZS11aS10ZXN0LWp1bml0NCA9IHsgZ3JvdXAgPSAiYW5kcm9pZHguY29tcG9zZS51aSIsIG5hbWUgPSAidWktdGVzdC1qdW5pdDQiIH0KYW5kcm9pZHgtbmF2aWdhdGlvbi1jb21wb3NlID0geyBncm91cCA9ICJhbmRyb2lkeC5uYXZpZ2F0aW9uIiwgbmFtZSA9ICJuYXZpZ2F0aW9uLWNvbXBvc2UiLCB2ZXJzaW9uLnJlZiA9ICJuYXZpZ2F0aW9uQ29tcG9zZSIgfQphbmRyb2lkeC1yb29tLXJ1bnRpbWUgPSB7IGdyb3VwID0gImFuZHJvaWR4LnJvb20iLCBuYW1lID0gInJvb20tcnVudGltZSIsIHZlcnNpb24ucmVmID0gInJvb21SdW50aW1lIiB9CmFuZHJvaWR4LXJvb20ta3R4ID0geyBncm91cCA9ICJhbmRyb2lkeC5yb29tIiwgbmFtZSA9ICJyb29tLWt0eCIsIHZlcnNpb24ucmVmID0gInJvb21LdHgiIH0KYW5kcm9pZHgtcm9vbS1jb21waWxlciA9IHsgZ3JvdXAgPSAiYW5kcm9pZHgucm9vbSIsIG5hbWUgPSAicm9vbS1jb21waWxlciIsIHZlcnNpb24ucmVmID0gInJvb21Db21waWxlciIgfQprb3RsaW54LWNvcm91dGluZXMtdGVzdCA9IHsgZ3JvdXAgPSAib3JnLmpldGJyYWlucy5rb3RsaW54IiwgbmFtZSA9ICJrb3RsaW54LWNvcm91dGluZXMtdGVzdCIsIHZlcnNpb24ucmVmID0gImtvdGxpbnhDb3JvdXRpbmVzVGVzdCIgfQphbmRyb2lkeC1jb3JlID0geyBncm91cCA9ICJhbmRyb2lkeC50ZXN0IiwgbmFtZSA9ICJjb3JlIiwgdmVyc2lvbi5yZWYgPSAiY29yZSIgfQphbmRyb2lkeC1ydW5uZXIgPSB7IGdyb3VwID0gImFuZHJvaWR4LnRlc3QiLCBuYW1lID0gInJ1bm5lciIsIHZlcnNpb24ucmVmID0gInJ1bm5lciIgfQphbmRyb2lkeC1jb21wb3NlLW1hdGVyaWFsMyA9IHsgZ3JvdXAgPSAiYW5kcm9pZHguY29tcG9zZS5tYXRlcmlhbDMiLCBuYW1lID0gIm1hdGVyaWFsMyIgfQphbmRyb2lkeC1jb21wb3NlLW1hdGVyaWFsLWljb25zLWNvcmUgPSB7IGdyb3VwID0gImFuZHJvaWR4LmNvbXBvc2UubWF0ZXJpYWwiLCBuYW1lID0gIm1hdGVyaWFsLWljb25zLWNvcmUiIH0KYW5kcm9pZHgtY29tcG9zZS1tYXRlcmlhbC1pY29ucy1leHRlbmRlZCA9IHsgZ3JvdXAgPSAiYW5kcm9pZHguY29tcG9zZS5tYXRlcmlhbCIsIG5hbWUgPSAibWF0ZXJpYWwtaWNvbnMtZXh0ZW5kZWQiIH0KY29pbC1jb21wb3NlID0geyBncm91cCA9ICJpby5jb2lsLWt0IiwgbmFtZSA9ICJjb2lsLWNvbXBvc2UiLCB2ZXJzaW9uLnJlZiA9ICJjb2lsQ29tcG9zZSIgfQpyZXRyb2ZpdCA9IHsgZ3JvdXAgPSAiY29tLnNxdWFyZXVwLnJldHJvZml0MiIsIG5hbWUgPSAicmV0cm9maXQiLCB2ZXJzaW9uLnJlZiA9ICJyZXRyb2ZpdCIgfQpjb252ZXJ0ZXItbW9zaGkgPSB7IGdyb3VwID0gImNvbS5zcXVhcmV1cC5yZXRyb2ZpdDIiLCBuYW1lID0gImNvbnZlcnRlci1tb3NoaSIsIHZlcnNpb24ucmVmID0gImNvbnZlcnRlck1vc2hpIiB9CmtvdGxpbngtY29yb3V0aW5lcy1hbmRyb2lkID0geyBncm91cCA9ICJvcmcuamV0YnJhaW5zLmtvdGxpbngiLCBuYW1lID0gImtvdGxpbngtY29yb3V0aW5lcy1hbmRyb2lkIiwgdmVyc2lvbi5yZWYgPSAia290bGlueENvcm91dGluZXNBbmRyb2lkIiB9CmtvdGxpbngtY29yb3V0aW5lcy1jb3JlID0geyBncm91cCA9ICJvcmcuamV0YnJhaW5zLmtvdGxpbngiLCBuYW1lID0gImtvdGxpbngtY29yb3V0aW5lcy1jb3JlIiwgdmVyc2lvbi5yZWYgPSAia290bGlueENvcm91dGluZXNDb3JlIiB9CmFjY29tcGFuaXN0LXBlcm1pc3Npb25zID0geyBncm91cCA9ICJjb20uZ29vZ2xlLmFjY29tcGFuaXN0IiwgbmFtZSA9ICJhY2NvbXBhbmlzdC1wZXJtaXNzaW9ucyIsIHZlcnNpb24ucmVmID0gImFjY29tcGFuaXN0UGVybWlzc2lvbnMiIH0KcGxheS1zZXJ2aWNlcy1sb2NhdGlvbiA9IHsgZ3JvdXAgPSAiY29tLmdvb2dsZS5hbmRyb2lkLmdtcyIsIG5hbWUgPSAicGxheS1zZXJ2aWNlcy1sb2NhdGlvbiIsIHZlcnNpb24ucmVmID0gInBsYXlTZXJ2aWNlc0xvY2F0aW9uIiB9CmFuZHJvaWR4LWNhbWVyYS1jYW1lcmEyID0geyBncm91cCA9ICJhbmRyb2lkeC5jYW1lcmEiLCBuYW1lID0gImNhbWVyYS1jYW1lcmEyIiwgdmVyc2lvbi5yZWYgPSAiY2FtZXJhQ2FtZXJhMiIgfQphbmRyb2lkeC1jYW1lcmEtbGlmZWN5Y2xlID0geyBncm91cCA9ICJhbmRyb2lkeC5jYW1lcmEiLCBuYW1lID0gImNhbWVyYS1saWZlY3ljbGUiLCB2ZXJzaW9uLnJlZiA9ICJjYW1lcmFMaWZlY3ljbGUiIH0KYW5kcm9pZHgtY2FtZXJhLXZpZXcgPSB7IGdyb3VwID0gImFuZHJvaWR4LmNhbWVyYSIsIG5hbWUgPSAiY2FtZXJhLXZpZXciLCB2ZXJzaW9uLnJlZiA9ICJjYW1lcmFWaWV3IiB9CmFuZHJvaWR4LWNhbWVyYS1jb3JlID0geyBncm91cCA9ICJhbmRyb2lkeC5jYW1lcmEiLCBuYW1lID0gImNhbWVyYS1jb3JlIiwgdmVyc2lvbi5yZWYgPSAiY2FtZXJhQ29yZSIgfQpsb2dnaW5nLWludGVyY2VwdG9yID0geyBncm91cCA9ICJjb20uc3F1YXJldXAub2todHRwMyIsIG5hbWUgPSAibG9nZ2luZy1pbnRlcmNlcHRvciIsIHZlcnNpb24ucmVmID0gImxvZ2dpbmdJbnRlcmNlcHRvciIgfQpva2h0dHAgPSB7IGdyb3VwID0gImNvbS5zcXVhcmV1cC5va2h0dHAzIiwgbmFtZSA9ICJva2h0dHAiLCB2ZXJzaW9uLnJlZiA9ICJva2h0dHAiIH0KbW9zaGkta290bGluID0geyBncm91cCA9ICJjb20uc3F1YXJldXAubW9zaGkiLCBuYW1lID0gIm1vc2hpLWtvdGxpbiIsIHZlcnNpb24ucmVmID0gIm1vc2hpS290bGluIiB9Cm1vc2hpLWtvdGxpbi1jb2RlZ2VuID0geyBncm91cCA9ICJjb20uc3F1YXJldXAubW9zaGkiLCBuYW1lID0gIm1vc2hpLWtvdGxpbi1jb2RlZ2VuIiwgdmVyc2lvbi5yZWYgPSAibW9zaGlLb3RsaW5Db2RlZ2VuIiB9CmFuZHJvaWR4LWRhdGFzdG9yZS1wcmVmZXJlbmNlcyA9IHsgZ3JvdXAgPSAiYW5kcm9pZHguZGF0YXN0b3JlIiwgbmFtZSA9ICJkYXRhc3RvcmUtcHJlZmVyZW5jZXMiLCB2ZXJzaW9uLnJlZiA9ICJkYXRhc3RvcmVQcmVmZXJlbmNlcyIgfQpyb2JvbGVjdHJpYyA9IHsgZ3JvdXAgPSAib3JnLnJvYm9sZWN0cmljIiwgbmFtZSA9ICJyb2JvbGVjdHJpYyIsIHZlcnNpb24ucmVmID0gInJvYm9sZWN0cmljIiB9CmZpcmViYXNlLWJvbSA9IHsgZ3JvdXAgPSAiY29tLmdvb2dsZS5maXJlYmFzZSIsIG5hbWUgPSAiZmlyZWJhc2UtYm9tIiwgdmVyc2lvbi5yZWYgPSAiZmlyZWJhc2VCb20iIH0KZmlyZWJhc2UtYWkgPSB7IGdyb3VwID0gImNvbS5nb29nbGUuZmlyZWJhc2UiLCBuYW1lID0gImZpcmViYXNlLWFpIiB9CmZpcmViYXNlLWFwcGNoZWNrLXJlY2FwdGNoYSA9IHsgZ3JvdXAgPSAiY29tLmdvb2dsZS5maXJlYmFzZSIsIG5hbWUgPSAiZmlyZWJhc2UtYXBwY2hlY2stcmVjYXB0Y2hhIiB9CmZpcmViYXNlLWFwcGNoZWNrLWRlYnVnID0geyBncm91cCA9ICJjb20uZ29vZ2xlLmZpcmViYXNlIiwgbmFtZSA9ICJmaXJlYmFzZS1hcHBjaGVjay1kZWJ1ZyIgfQpmaXJlYmFzZS1maXJlc3RvcmUgPSB7IGdyb3VwID0gImNvbS5nb29nbGUuZmlyZWJhc2UiLCBuYW1lID0gImZpcmViYXNlLWZpcmVzdG9yZSIgfQpmaXJlYmFzZS1hdXRoID0geyBncm91cCA9ICJjb20uZ29vZ2xlLmZpcmViYXNlIiwgbmFtZSA9ICJmaXJlYmFzZS1hdXRoIiB9CmFuZHJvaWR4LWNyZWRlbnRpYWxzID0geyBncm91cCA9ICJhbmRyb2lkeC5jcmVkZW50aWFscyIsIG5hbWUgPSAiY3JlZGVudGlhbHMiLCB2ZXJzaW9uLnJlZiA9ICJjcmVkZW50aWFscyIgfQphbmRyb2lkeC1jcmVkZW50aWFscy1wbGF5LXNlcnZpY2VzID0geyBncm91cCA9ICJhbmRyb2lkeC5jcmVkZW50aWFscyIsIG5hbWUgPSAiY3JlZGVudGlhbHMtcGxheS1zZXJ2aWNlcy1hdXRoIiwgdmVyc2lvbi5yZWYgPSAiY3JlZGVudGlhbHMiIH0KZ29vZ2xlaWQgPSB7IGdyb3VwID0gImNvbS5nb29nbGUuYW5kcm9pZC5saWJyYXJpZXMuaWRlbnRpdHkuZ29vZ2xlaWQiLCBuYW1lID0gImdvb2dsZWlkIiwgdmVyc2lvbi5yZWYgPSAiZ29vZ2xlaWQiIH0KCgpbcGx1Z2luc10KYW5kcm9pZC1hcHBsaWNhdGlvbiA9IHsgaWQgPSAiY29tLmFuZHJvaWQuYXBwbGljYXRpb24iLCB2ZXJzaW9uLnJlZiA9ICJhZ3AiIH0Ka290bGluLWNvbXBvc2UgPSB7IGlkID0gIm9yZy5qZXRicmFpbnMua290bGluLnBsdWdpbi5jb21wb3NlIiwgdmVyc2lvbi5yZWYgPSAia290bGluIiB9Cmdvb2dsZS1kZXZ0b29scy1rc3AgPSB7IGlkID0gImNvbS5nb29nbGUuZGV2dG9vbHMua3NwIiwgdmVyc2lvbi5yZWYgPSAiZ29vZ2xlRGV2dG9vbHNLc3AiIH0Kc2VjcmV0cyA9IHsgaWQgPSAiY29tLmFuZHJvaWQuYXBwbGljYXRpb24ubGlicmFyaWVzLm1hcHNwbGF0Zm9ybS5zZWNyZXRzLWdyYWRsZS1wbHVnaW4iLCB2ZXJzaW9uLnJlZiA9ICJzZWNyZXRzR3JhZGxlUGx1Z2luIiB9Cg=='
+              with open('gradle/libs.versions.toml', 'wb') as f:
+                  f.write(base64.b64decode(b64_toml))
+          "
+
       - name: Build debug APK
         run: |
           gradle :app:assembleDebug --stacktrace --no-daemon
